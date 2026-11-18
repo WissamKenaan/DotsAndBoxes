@@ -7,8 +7,9 @@ The Makefile always compiles with `-g -O0`:
 - `-O0` turns off optimisation, so every variable can be printed in GDB and the
   program runs line by line in the order you wrote it.
 
-The outputs below come from real runs of this code (on Linux with glibc). Run
-them again on your Alpine VM and use your own screenshots in the report.
+The outputs below come from real runs of this code. They were first run on
+Ubuntu (glibc) and then repeated on the Alpine Linux 3.24 VM; the Alpine
+screenshots are in `docs/screenshots/`.
 
 ---
 
@@ -182,10 +183,11 @@ allocations are the C library's own buffers for `stdin`/`stdout`, and both are
 freed at exit. Because the program does no dynamic allocation, leaks are
 avoided by design; Valgrind confirms it.
 
-**On Alpine:** Alpine uses the musl C library instead of glibc, so the
-allocation count may differ. The requirement is still **0 errors** and
-**no leaks**. Run `make valgrind` on the VM and include that output in the
-report.
+**On Alpine (verified on the VM):** Alpine uses the musl C library instead of
+glibc. There, Valgrind reports `total heap usage: 0 allocs, 0 frees, 0 bytes
+allocated`, together with `All heap blocks were freed` and `0 errors`. musl
+doesn't allocate stdio buffers on the heap, so this confirms that our own code
+makes no heap allocations at all. See `docs/screenshots/01_make_test_and_valgrind.png`.
 
 ### Valgrind on the unit tests and other inputs
 

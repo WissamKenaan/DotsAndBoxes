@@ -43,20 +43,18 @@ tests the normalisation.
 - Valgrind on all 3 game files + unit tests: **0 errors, 0 leaks**
 - Output format compared line by line with the sample run on page 5
 
-## Tests YOU must run on the Alpine VM (not yet verified)
+## Results on the Alpine VM (Alpine Linux 3.24, gcc 15.2, GDB 16.3, Valgrind 3.25.1)
 
-These have **not** been run on Alpine. Alpine uses musl instead of glibc, so
-check them yourself and keep screenshots for the report.
-
-| # | Test | Expected |
-|---|------|----------|
-| 1 | `make clean && make` | no errors, no warnings |
-| 2 | `make test` | all tests pass |
-| 3 | `make valgrind` | `ERROR SUMMARY: 0 errors`, `All heap blocks were freed` |
-| 4 | GDB session from `docs/DEBUGGING.md` | breakpoints hit, values as shown |
-| 5 | `reboot` | game appears on tty1 with **no** login prompt |
-| 6 | Finish a game on the VM, press Enter | a new game starts |
-| 7 | Alt+F2 (or Right-Ctrl+F2) | normal root login on tty2 still works |
+| # | Test | Result | Evidence |
+|---|------|--------|----------|
+| 1 | `make clean && make` | ✅ no errors, no warnings | `screenshots/02_clean_build.png` |
+| 2 | `make test` | ✅ 45/45 unit, 9/9 scripted | `screenshots/01_make_test_and_valgrind.png` |
+| 3 | `make valgrind` | ✅ 0 errors, 0 allocs, no leaks | `screenshots/01_make_test_and_valgrind.png` |
+| 4 | GDB session from `docs/DEBUGGING.md` | ✅ breakpoints hit, values as documented | `screenshots/03_…`, `screenshots/04_…` |
+| 5 | `reboot` | ✅ game on tty1, no login prompt | `screenshots/06_vm_boots_into_game.png` |
+| 6 | Finish a game on the VM, press Enter | ⬜ check once before the demo: a new game should start | — |
+| 7 | Alt+F2 (or Right-Ctrl+F2) | ✅ normal root login on tty2 | `screenshots/08_tty2_root_login_and_tie_game.png` |
+| 8 | Invalid input typed by hand | ✅ rejected, same player asked again | `screenshots/07_gameplay_and_invalid_input.png` |
 
 ## Manual gameplay checks (play by hand once)
 

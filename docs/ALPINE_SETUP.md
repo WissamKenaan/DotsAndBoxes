@@ -77,9 +77,13 @@ Back up `/etc/inittab`, then replace the tty1 getty line:
 
 ```sh
 cp /etc/inittab /etc/inittab.bak
-sed -i 's|^tty1::respawn:/sbin/getty 38400 tty1|tty1::respawn:/bin/login -f player|' /etc/inittab
+sed -i 's|^tty1:.*|tty1::respawn:/bin/login -f player|' /etc/inittab
 grep tty1 /etc/inittab
 ```
+
+The `sed` command replaces the whole line that starts with `tty1:`, whatever
+its exact contents. It has exactly three `|` separators:
+`s | <find> | <replace with> |`.
 
 The `grep` must print exactly:
 
@@ -87,8 +91,9 @@ The `grep` must print exactly:
 tty1::respawn:/bin/login -f player
 ```
 
-If it still shows `/sbin/getty`, your line looked slightly different: open
-`/etc/inittab` with `vi` and change the `tty1::` line by hand.
+If it doesn't, **do not reboot.** Open `/etc/inittab` with `vi` and change the
+`tty1::` line by hand. Tip: type `/etc/init` and press **Tab** to let the shell
+complete the file name, which avoids typos.
 
 What the line means:
 
