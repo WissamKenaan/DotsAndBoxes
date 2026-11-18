@@ -1,0 +1,17 @@
+# /home/player/.profile
+#
+# Read by the login shell of the 'player' account. /etc/inittab logs
+# 'player' in automatically on tty1, so this starts the game at boot.
+#
+# Only tty1 starts the game; logging in as 'player' anywhere else
+# (another console, SSH) gives a normal shell.
+
+if [ "$(tty)" = "/dev/tty1" ]; then
+    clear
+    /usr/local/bin/dotsboxes
+    printf '\nPress Enter to start a new game...'
+    read -r _
+    # Ending the session makes init respawn the login on tty1,
+    # which runs this file again -> a fresh game.
+    exit 0
+fi
