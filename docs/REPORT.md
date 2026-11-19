@@ -1,13 +1,14 @@
 ---
-title: "Dots and Boxes — Sprint 1 Report"
+title: "Dots and Boxes Sprint 1 Report"
 subtitle: "CMPS 241 · Fall 2026/27 · American University of Beirut"
 ---
 
 | | |
 |---|---|
-| **Members** | Wissam Kenaan, Elias El Khoury |
+| **Elias El Khoury student ID** | 202505530 |
+| **Wissam Kenaan student ID** | 202505962 |
 | **GitHub repository** | <https://github.com/WissamKenaan/DotsAndBoxes> |
-| **Sprint** | 1: Two-Player Game |
+| **Sprint** | 1 - Two-Player Game |
 
 # 1. Overview
 
@@ -18,8 +19,7 @@ The player's initial appears inside the box, and that player moves again. When
 all 20 boxes are claimed, the player with more boxes wins, or the game is
 declared a tie at 10–10.
 
-The game runs on Alpine Linux inside a virtual machine and starts automatically
-at boot, with no username or password prompt.
+The game runs on Alpine Linux inside a VirtualBox virtual machine and starts automatically at boot, with no username or password prompt. The final version of the code was re-verified on the VM (section 8.2).
 
 # 2. Requirements coverage
 
@@ -31,8 +31,8 @@ at boot, with no username or password prompt.
 | Check if a move completes a square and award it | Only the ≤ 2 boxes next to the new line are checked; the owner's initial is stored and shown | `board.c` |
 | Declare the winner when all squares are claimed | Winner, or a tie at 10–10 | `game.c`, `display.c` |
 | Run on a small Linux distribution without a GUI (Alpine) | Standard C99 and POSIX `sh` only; no external libraries | whole project |
-| Launch automatically at VM start, without login | BusyBox `init` + `login -f` + `.profile` | §6, `scripts/player_profile` |
-| Multiple `.h` and `.c` files, with a Makefile | 4 modules + `main.c`; targets `all`, `run`, `test`, `valgrind`, `install`, `clean` | `include/`, `src/`, `Makefile` |
+| Launch automatically at VM start, without login | BusyBox `init` + `login -f` + `.profile`; verified on the final build (Figures 12–13) | §6, `scripts/player_profile` |
+| Multiple `.h` and `.c` files, with a Makefile | 4 modules + `main.c`; targets `all`, `run`, `test`, `test-game`, `valgrind`, `install`, `clean` | `include/`, `src/`, `Makefile` |
 | Debug with Valgrind and GDB | Documented sessions, including a real bug found and fixed | §7, `docs/DEBUGGING.md` |
 | Everything on GitHub | Source, tests, scripts and docs, committed in phases | §9 |
 
@@ -63,7 +63,7 @@ Some points were not specified, so we made these decisions:
 | Module | Responsibility | Lines (`.h` + `.c`) |
 |---|---|---|
 | `board` | Board state, move validation, box completion. **No input/output.** | 235 |
-| `input` | Read one line safely and parse four integers | 105 |
+| `input` | Read one line safely and parse four integers | 108 |
 | `display` | Every `printf` in the program | 145 |
 | `game` | Turn order, scores, winner, main loop | 145 |
 | `main` | Entry point: `return game_run();` | 9 |
@@ -94,8 +94,7 @@ horizontal[i][j] && horizontal[i+1][j] && vertical[i][j] && vertical[i][j+1]
 ```
 
 All game state lives in fixed-size arrays inside one `Game` struct on the
-stack. The program never calls `malloc`, so memory leaks are impossible by
-design. Valgrind confirms this (§7.2).
+stack. The application does not allocate dynamic memory. Valgrind reports no memory errors or leaks in the checked runs (§7.2).
 
 # 5. Algorithms and complexity
 
@@ -134,8 +133,7 @@ tty1::respawn:/bin/login -f player
 ```
 
 - `login -f player` logs in the unprivileged user `player` **without asking
-  for a password**. We do not use `root`, so a player at the keyboard cannot
-  damage the system.
+  for a password**. We do not use `root`, which limits the player's permissions to that account.
 - `respawn` makes `init` restart the login whenever it ends.
 - `/home/player/.profile` (our `scripts/player_profile`) runs on tty1 only. It
   clears the screen, starts `/usr/local/bin/dotsboxes`, waits for Enter at the
@@ -149,9 +147,7 @@ reading BusyBox's `loginutils/login.c`. Because `adduser -D` creates the user
 without a password, we give `player` a password with `passwd player`, which
 unlocks the account. Nobody ever has to type it.
 
-We verified the configuration by rebooting the VM: it starts directly in the
-game on tty1 with no login prompt (Figure 6), while tty2 still offers a normal
-root login (Figure 8). Figure 5 shows the configuration itself.
+Figure 5 shows the startup configuration and Figure 8 shows that a normal root login is still available on tty2. After installing the final build (commit `699595e`) with `make install`, we rebooted the VM: it started directly in the game on tty1 with no login prompt (Figure 12). We then played a complete game; at the end the game printed the result and `Press Enter to start a new game...` (Figure 13), and pressing Enter started a new game on an empty board.
 
 **Test environment:** Alpine Linux 3.24 (kernel 6.18, x86_64) in an Oracle
 VirtualBox VM with 1 GB of RAM and an 8 GB disk; gcc 15.2.0, GNU Make 4.4.1,
@@ -251,6 +247,7 @@ leads to the missing line. We restored it, and Valgrind reported 0 errors.
   move.
 - `strtol` (not `scanf("%d")`) detects missing numbers and trailing text, and
   handles very large numbers without undefined behaviour.
+- Coordinates must be separated by whitespace. Joined forms such as `0+0+0+1` are rejected.
 - Every error message tells the player what to do next. Figure 7 shows this on
   the VM: `0001` and `0` are rejected as "Enter exactly four numbers", and
   `1 0 1 0` as "You must choose two different dots". The same player is asked
@@ -260,7 +257,7 @@ leads to the missing line. We restored it, and Valgrind reported 0 errors.
 
 `make test` runs both test suites.
 
-**Unit tests:** 45 checks in `tests/test_board.c`. They cover:
+**Unit tests:** 49 checks in `tests/test_board.c`. They cover:
 
 - **Every validation error:** out of range, same dot, diagonal, two dots
   apart, line already drawn (in both orders).
@@ -269,7 +266,7 @@ leads to the missing line. We restored it, and Valgrind reported 0 errors.
 - **Game state:** full board (49 lines → exactly 20 boxes); turn passing;
   extra turn after scoring; winner and tie.
 - **Input parsing:** wrong count of numbers, letters, `A0` style, empty line,
-  numbers too large for an `int`.
+  numbers too large for an `int`, spaces, tabs, and missing whitespace between coordinates.
 
 **Full-game tests:** 9 checks in `tests/run_tests.sh`. They play complete games
 through the real executable:
@@ -285,7 +282,7 @@ The expected results were computed by a **separate simulator** written in
 Python, not by our C program. The tests therefore compare the C program
 against an independent reference instead of against itself.
 
-**Results:**
+**Earlier verification results supplied with the original report:**
 
 | | Alpine VM (gcc 15.2, musl) | Ubuntu dev machine (gcc 13.3, glibc) |
 |---|---|---|
@@ -295,6 +292,38 @@ against an independent reference instead of against itself.
 | Valgrind | 0 errors, no leaks (Figure 1) | 0 errors, no leaks |
 
 The end of the tie game is shown in Figure 8.
+
+
+# 8.1 Current automated verification
+
+The latest verified game revision is 699595e. GitHub Actions run 44473841864 completed successfully on Alpine Linux 3.24. The workflow builds the real C executable with the Makefile and exercises its standard input and output.
+
+make test-game runs an independent Python reference model. It stores geometric edges in a set and scans all 20 boxes after every legal move. It checks every displayed board, box owner, score, turn, extra turn, final result, and exit status across 100 seeded full games, the three existing complete-game fixtures, and four incomplete-game scenarios. The seeded games contain 4,900 legal moves, including 1,100 single-box and 450 double-box captures.
+
+Invalid inputs are interleaved throughout the complete games. They include missing or extra numbers, joined coordinates, letters, decimals, oversized numbers and lines, off-board or identical dots, diagonals, distant dots, and repeated edges in reverse order. Rejection must preserve the turn and allow the next legal move. EOF is checked before play and after 1, 10, and 48 moves, including input without a final newline.
+
+| Check | Current verified result |
+|---|---|
+| Makefile build on Alpine 3.24 | Passed |
+| Unit checks | 49 passed, 0 failed |
+| Scripted checks | 9 passed |
+| End-to-end game scenarios | 107 passed |
+| Valgrind | 0 errors and no leaks for the A-win, B-win and tie fixtures, and the unit-test binary |
+| GDB | Breakpoint on board_apply_move hit; move values and call stack inspected |
+
+Verification run: <https://github.com/WissamKenaan/DotsAndBoxes/actions/runs/44473841864>
+
+# 8.2 Final build re-verified on the Alpine VM
+
+After the parser fix, we updated the VM with `git pull`, rebuilt with `make clean && make`, and repeated the checks on the final build:
+
+| Check on the VM (final build `699595e`) | Result |
+|---|---|
+| `make test` | 49 unit checks passed, 0 failed; all scripted checks passed (Figure 10) |
+| `make valgrind` | 0 allocations, all heap blocks freed, 0 errors (Figure 11) |
+| New build installed | typing `0+0+0+1` in the auto-started game is rejected with *"Enter exactly four numbers"*, which only the fixed parser does |
+| Auto-start after `reboot` | game shown directly on tty1, no login prompt (Figure 12) |
+| Complete game and restart | result and `Press Enter to start a new game...` shown; Enter starts a new game (Figure 13) |
 
 # 9. Version control
 
@@ -314,8 +343,8 @@ endings in every copy of the repository, including copies cloned on Windows.
 # 10. Status and limitations
 
 - All Sprint 1 functional requirements are implemented and tested.
-- Built, tested and run under Valgrind and GDB on **Alpine Linux 3.24** in
-  VirtualBox. Auto-start was verified by rebooting the VM (Figures 1–8).
+- The final build (commit `699595e`) passes 49 unit checks, 9 scripted checks and 107 end-to-end scenarios, and runs under Valgrind with 0 errors, both in the GitHub Actions Alpine 3.24 container and on our Alpine Linux 3.24 VirtualBox VM.
+- On the VM, the game starts automatically at boot without a login prompt, and a finished game restarts when Enter is pressed (Figures 12–13).
 - Input must be four numbers. Letter notation such as `A0` (mentioned only in
   the prompt example) is not supported.
 - Only two human players. The bot is the subject of Sprint 2; the rules module
@@ -323,8 +352,7 @@ endings in every copy of the repository, including copies cloned on Windows.
 
 # Appendix: Screenshots from the Alpine VM
 
-All screenshots were taken in VirtualBox (View → Take Screenshot) on the
-Alpine Linux 3.24 VM.
+All screenshots were taken on our Alpine Linux 3.24 VirtualBox VM, except Figure 9, which comes from the GitHub Actions run. Figures 1–8 were taken on the first build (45 unit checks); Figures 10–13 were taken on the final build (49 unit checks), after the parser fix.
 
 ![Figure 1: `make test` (45/45 unit tests, 9/9 full-game tests) and `make valgrind` (0 errors, no leaks)](screenshots/01_make_test_and_valgrind.png)
 
@@ -341,3 +369,13 @@ Alpine Linux 3.24 VM.
 ![Figure 7: Playing on the VM: invalid input rejected with clear messages, valid moves drawn, scores shown](screenshots/07_gameplay_and_invalid_input.png)
 
 ![Figure 8: Normal root login still available on tty2; the scripted tie game ends 10–10](screenshots/08_tty2_root_login_and_tie_game.png)
+
+![Figure 9: Current Alpine workflow results including 107 end-to-end scenarios](screenshots/09_current_alpine_game_checks.jpg)
+
+![Figure 10: Final build on the VM: `make test` with 49/49 unit checks and all scripted checks passing](screenshots/10_latest_build_make_test_49.png)
+
+![Figure 11: Final build on the VM: `make valgrind`, 0 allocations, no leaks, 0 errors](screenshots/11_latest_build_valgrind.png)
+
+![Figure 12: Final build after `make install` and `reboot`: the game starts directly on tty1](screenshots/12_latest_build_boots_into_game.png)
+
+![Figure 13: End of a complete game on the VM: final score, winner, and the prompt to start a new game](screenshots/13_full_game_end_and_restart_prompt.png)
