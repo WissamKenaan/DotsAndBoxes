@@ -12,7 +12,7 @@ jobs:
   alpine:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build, test, and debug on Alpine Linux
         run: |
           docker run --rm -v "$GITHUB_WORKSPACE:/src" -w /src alpine:3.24 sh -ec '
