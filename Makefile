@@ -3,11 +3,13 @@
 #   make            build the game  -> ./dotsboxes
 #   make run        build and start the game
 #   make test       build and run unit tests + scripted full-game tests
+#   make test-game  check 107 end-to-end game scenarios (requires Python 3)
 #   make valgrind   run a full scripted game under Valgrind
 #   make install    copy the game to /usr/local/bin (run as root)
 #   make clean      remove all build output
 
 CC      = cc
+PYTHON  ?= python3
 # -g     : debug symbols for GDB and readable Valgrind reports
 # -O0    : no optimisation, so GDB shows every variable and line in order
 # -MMD -MP : generate .d files so editing a .h rebuilds the right .c files
@@ -29,7 +31,7 @@ DEPS      = $(LIB_OBJS:.o=.d) $(MAIN_OBJ:.o=.d) $(TEST_OBJ:.o=.d)
 VALGRIND_FLAGS = --leak-check=full --show-leak-kinds=all \
                  --track-origins=yes --error-exitcode=1
 
-.PHONY: all run test valgrind install clean
+.PHONY: all run test test-game valgrind install clean
 
 all: $(TARGET)
 
@@ -54,6 +56,9 @@ run: $(TARGET)
 test: $(TARGET) $(TEST_BIN)
 	./$(TEST_BIN)
 	sh tests/run_tests.sh
+
+test-game: $(TARGET)
+	$(PYTHON) tests/test_game.py
 
 valgrind: $(TARGET)
 	valgrind $(VALGRIND_FLAGS) ./$(TARGET) < tests/inputs/tie_game.txt > /dev/null

@@ -47,6 +47,7 @@ make            # builds ./dotsboxes
 
 ```sh
 make test       # 49 unit tests + 9 scripted full-game checks
+make test-game  # 107 end-to-end scenarios; requires python3 (apk add python3)
 make valgrind   # full scripted game under Valgrind (exit code 1 on any error)
 ```
 
