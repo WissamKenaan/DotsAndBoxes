@@ -35,6 +35,9 @@ InputStatus input_parse_move(const char *line, Move *move)
         if (end == cursor) {
             return INPUT_BAD_FORMAT; /* no digits found */
         }
+        if (*end != '\0' && !isspace((unsigned char)*end)) {
+            return INPUT_BAD_FORMAT; /* numbers must be separated by whitespace */
+        }
         /* Any value outside int range is surely out of the board too.
          * Clamp it to -1 so board_validate_move() reports "out of range". */
         if (values[i] < -1000 || values[i] > 1000) {
