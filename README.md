@@ -46,7 +46,7 @@ make            # builds ./dotsboxes
 ## Testing and debugging
 
 ```sh
-make test       # 45 unit tests + 9 scripted full-game checks
+make test       # 49 unit tests + 9 scripted full-game checks
 make valgrind   # full scripted game under Valgrind (exit code 1 on any error)
 ```
 
