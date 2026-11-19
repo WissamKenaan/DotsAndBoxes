@@ -1,0 +1,26 @@
+name: Sprint 1 Alpine checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  alpine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build, test, and debug on Alpine Linux
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/src" -w /src alpine:3.24 sh -ec '
+            apk add --no-cache build-base gdb valgrind
+            make clean
+            make test
+            make valgrind
+            gdb --batch -ex "break board_apply_move" \
+              -ex "run < tests/inputs/tie_game.txt > /dev/null" \
+              -ex "print move" -ex "backtrace" ./dotsboxes
+          '
