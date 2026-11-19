@@ -6,7 +6,7 @@ Run everything with:
 make test
 ```
 
-## Automated unit tests (`tests/test_board.c`): 45 checks
+## Automated unit tests (`tests/test_board.c`): 49 checks
 
 | Area | What is checked |
 |------|-----------------|
@@ -18,7 +18,7 @@ make test
 | Full board | drawing all 49 lines claims exactly 20 boxes; the board reports full |
 | Turns/scores | A starts; the turn passes after a non-scoring move; the scorer moves again; the score updates |
 | Winner | 11–9 → A, 7–13 → B, 10–10 → tie |
-| Input parsing | valid input, extra spaces, 3 numbers, 5 numbers, letters, `A0` style, empty line, a 20-digit number (no overflow) |
+| Input parsing | valid input, spaces and tabs, missing whitespace between coordinates, 3 numbers, 5 numbers, letters, `A0` style, empty line, a 20-digit number (no overflow) |
 
 ## Scripted full-game tests (`tests/run_tests.sh`): 9 checks
 
@@ -35,6 +35,23 @@ tests compare the C program against an independent reference.
 
 About half of the moves in each file give the dots in reverse order, which
 tests the normalisation.
+
+Every scripted check verifies the game's exit status as well as its output.
+Completed games must exit with status 0; the early-end-of-input fixture must
+exit with status 1. Output is captured before checking it, so an early exit
+from `grep -q` cannot interrupt the game through its output pipe.
+
+The four additional parsing checks were added after the Alpine screenshots
+below were taken. Those screenshots document the original 45 checks.
+
+## GitHub Actions
+
+The `Sprint 1 Alpine checks` workflow builds the current commit inside an
+Alpine 3.24 container on every push and pull request. It runs `make test`,
+`make valgrind`, and a batch GDB session that stops in `board_apply_move`,
+prints the move, and shows the call stack. Results are available in the
+repository's Actions tab. VM boot and restart behaviour still need to be
+checked in VirtualBox.
 
 ## Results (sandbox: Ubuntu 24.04, gcc 13.3, Valgrind)
 

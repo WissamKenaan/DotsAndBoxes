@@ -42,7 +42,7 @@ of the line ending in `/community`, save, then run `apk update` again.
 
 ```sh
 cd /root
-git clone https://github.com/<your-username>/DotsAndBoxes.git
+git clone https://github.com/WissamKenaan/DotsAndBoxes.git
 cd DotsAndBoxes
 make
 make test
