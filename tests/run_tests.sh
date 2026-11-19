@@ -10,22 +10,26 @@ INPUTS=tests/inputs
 failures=0
 
 expect_line() {
-    # $1 = input file, $2 = text that must appear in the output
-    if "$GAME" < "$INPUTS/$1" | grep -qF "$2"; then
+    # $1 = input file, $2 = expected text, $3 = expected exit status (default 0)
+    output=$("$GAME" < "$INPUTS/$1")
+    status=$?
+    if [ "$status" -eq "${3:-0}" ] && printf '%s\n' "$output" | grep -qF "$2"; then
         echo "  PASS  $1: found \"$2\""
     else
-        echo "  FAIL  $1: missing \"$2\""
+        echo "  FAIL  $1: expected \"$2\" and exit status ${3:-0}, got status $status"
         failures=$((failures + 1))
     fi
 }
 
 expect_count() {
-    # $1 = input file, $2 = text, $3 = how many times it must appear
-    count=$("$GAME" < "$INPUTS/$1" | grep -cF "$2")
-    if [ "$count" -eq "$3" ]; then
+    # $1 = input file, $2 = text, $3 = count, $4 = expected exit status (default 0)
+    output=$("$GAME" < "$INPUTS/$1")
+    status=$?
+    count=$(printf '%s\n' "$output" | grep -cF "$2")
+    if [ "$status" -eq "${4:-0}" ] && [ "$count" -eq "$3" ]; then
         echo "  PASS  $1: \"$2\" appears $3 times"
     else
-        echo "  FAIL  $1: \"$2\" appears $count times, expected $3"
+        echo "  FAIL  $1: \"$2\" appears $count times, expected $3; exit status $status, expected ${4:-0}"
         failures=$((failures + 1))
     fi
 }
@@ -39,8 +43,8 @@ expect_line b_wins_game.txt "Final score: A = 1, B = 19"
 expect_line b_wins_game.txt "Player B wins!"
 
 echo "invalid input handling"
-expect_count invalid_input.txt "Invalid move:" 11
-expect_line  invalid_input.txt "Input closed before the game finished."
+expect_count invalid_input.txt "Invalid move:" 11 1
+expect_line  invalid_input.txt "Input closed before the game finished." 1
 
 "$GAME" < "$INPUTS/invalid_input.txt" > /dev/null
 status=$?

@@ -217,6 +217,10 @@ static void test_input_parsing(void)
     CHECK(input_parse_move("0 4 0 3\n", &m) == INPUT_OK && m.r1 == 0 && m.c1 == 4 && m.r2 == 0 && m.c2 == 3,
           "\"0 4 0 3\" parses to four numbers");
     CHECK(input_parse_move("  1   2 1 3  \n", &m) == INPUT_OK, "extra spaces are allowed");
+    CHECK(input_parse_move("0\t0\t0\t1\n", &m) == INPUT_OK, "tabs separate coordinates");
+    CHECK(input_parse_move("0+0 0 1\n", &m) == INPUT_BAD_FORMAT, "first two coordinates need whitespace");
+    CHECK(input_parse_move("0 0+0 1\n", &m) == INPUT_BAD_FORMAT, "middle coordinates need whitespace");
+    CHECK(input_parse_move("0 0 0-1\n", &m) == INPUT_BAD_FORMAT, "last two coordinates need whitespace");
     CHECK(input_parse_move("0 4 0\n", &m) == INPUT_BAD_FORMAT, "three numbers are rejected");
     CHECK(input_parse_move("0 4 0 3 9\n", &m) == INPUT_BAD_FORMAT, "five numbers are rejected");
     CHECK(input_parse_move("a b c d\n", &m) == INPUT_BAD_FORMAT, "letters are rejected");
