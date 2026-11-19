@@ -16,10 +16,15 @@ jobs:
       - name: Build, test, and debug on Alpine Linux
         run: |
           docker run --rm -v "$GITHUB_WORKSPACE:/src" -w /src alpine:3.24 sh -ec '
-            apk add --no-cache build-base gdb valgrind
+            apk add --no-cache build-base gdb valgrind python3
             make clean
             make test
+            make test-game
             make valgrind
+            for input in tests/inputs/a_wins_game.txt tests/inputs/b_wins_game.txt; do
+              valgrind --leak-check=full --track-origins=yes --error-exitcode=99 ./dotsboxes < "$input" > /dev/null
+            done
+            valgrind --leak-check=full --track-origins=yes --error-exitcode=99 ./test_board > /dev/null
             gdb --batch -ex "break board_apply_move" \
               -ex "run < tests/inputs/tie_game.txt > /dev/null" \
               -ex "print move" -ex "backtrace" ./dotsboxes
