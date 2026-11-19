@@ -48,10 +48,36 @@ below were taken. Those screenshots document the original 45 checks.
 
 The `Sprint 1 Alpine checks` workflow builds the current commit inside an
 Alpine 3.24 container on every push and pull request. It runs `make test`,
-`make valgrind`, and a batch GDB session that stops in `board_apply_move`,
+`make test-game`, `make valgrind`, and a batch GDB session that stops in `board_apply_move`,
 prints the move, and shows the call stack. Results are available in the
 repository's Actions tab. VM boot and restart behaviour still need to be
 checked in VirtualBox.
+
+## End-to-end console game checks
+
+Install Python 3 (`apk add python3` on Alpine), then run `make test-game`.
+Python is used by these tests only; the game itself remains a C executable.
+
+`tests/test_game.py` checks 107 scenarios through the compiled game's standard
+input and output. Its reference model stores geometric edges in a set and
+scans all 20 boxes after every legal move. This is independent of the C
+implementation's horizontal/vertical arrays and adjacent-box lookup.
+
+- Three existing fixtures cover an A win, a B win, and a tie.
+- One hundred seeded complete games exercise 4,900 legal moves, including
+  reversed endpoints, spaces and tabs, and zero-, one-, and two-box captures.
+- Every displayed board, box owner, score update, turn prompt, extra turn,
+  final result, and process exit status is compared with the reference model.
+- Invalid inputs are interleaved throughout the complete games. These cover
+  missing and extra numbers, joined coordinates, letters, decimals, enormous
+  numbers, lines longer than the input buffer, off-board dots, identical dots,
+  diagonals, distant dots, and repeated edges in reverse order. Rejection must
+  preserve the player and allow the subsequent legal move to succeed.
+- Four incomplete games check end-of-input before play and after 1, 10, and
+  48 moves, including input without a final newline.
+
+GitHub Actions also runs Valgrind on both winning fixtures and the unit-test
+binary, in addition to the tie game covered by `make valgrind`.
 
 ## Results (sandbox: Ubuntu 24.04, gcc 13.3, Valgrind)
 
