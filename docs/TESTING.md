@@ -4,6 +4,8 @@ Run everything with:
 
 ```sh
 make test
+make test-game
+python3 tests/test_modes.py
 ```
 
 ## Automated unit tests (`tests/test_board.c`): 49 checks
@@ -31,7 +33,7 @@ tests compare the C program against an independent reference.
 | `tie_game.txt` | 49 | yes (4) | A = 10, B = 10, "It's a tie!" |
 | `a_wins_game.txt` | 49 | yes (5) | A = 19, B = 1, "Player A wins!" |
 | `b_wins_game.txt` | 49 | yes (4) | A = 1, B = 19, "Player B wins!" |
-| `invalid_input.txt` | 13 lines | — | 11 "Invalid move" messages, an early-exit message, exit status 1 |
+| `invalid_input.txt` | 13 move-input lines after the menu | — | 11 "Invalid move" messages, an early-exit message, exit status 1 |
 
 About half of the moves in each file give the dots in reverse order, which
 tests the normalisation.
@@ -44,12 +46,31 @@ from `grep -q` cannot interrupt the game through its output pipe.
 The four additional parsing checks were added after the Alpine screenshots
 below were taken. Those screenshots document the original 45 checks.
 
-## GitHub Actions
+## Sprint 2 menu and bot integration
 
-The `Sprint 1 Alpine checks` workflow builds the current commit inside an
+Every existing `tests/inputs/*.txt` two-player fixture now starts with `1`.
+`test_game.py` sends that choice before its generated moves. This also
+keeps the existing Valgrind target compatible without changing the Makefile.
+
+Run `python3 tests/test_modes.py` after building. Seven menu cases cover
+invalid/oversized choices, recovery to a complete game, whitespace and
+end-of-input. An eighth case checks the repeatable `bot_game.txt` fixture,
+which selects `2` and allows duplicate human attempts when the bot has
+already drawn an edge. Thirty interactive full games choose legal human
+moves while reading the actual bot responses. An independent geometric
+model checks all 1,470 moves, board pictures, owners, scores, extra turns,
+double captures, final results and exit statuses. Only A may receive a
+keyboard prompt in bot mode. Each game also checks invalid human input
+recovery before its first move.
+
+## GitHub Actions (Sprints 1–2)
+
+The `Sprint 1 and 2 Alpine checks` workflow builds the current commit inside an
 Alpine 3.24 container on every push and pull request. It runs `make test`,
-`make test-game`, `make valgrind`, and a batch GDB session that stops in `board_apply_move`,
-prints the move, and shows the call stack. Results are available in the
+`make test-game`, `python3 tests/test_modes.py`, and `make valgrind`. Additional
+Valgrind runs cover the winning fixtures, bot mode, and both unit binaries.
+Batch GDB sessions stop in `board_apply_move` and `bot_choose_move`, print
+the move/player, and show the call stack. Results are available in the
 repository's Actions tab. VM boot and restart behaviour still need to be
 checked in VirtualBox.
 

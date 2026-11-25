@@ -9,6 +9,12 @@
 #define PLAYER_A 'A'
 #define PLAYER_B 'B'
 
+typedef enum {
+    GAME_EXIT = 0,
+    GAME_TWO_PLAYERS = 1,
+    GAME_VS_BOT = 2
+} GameMode;
+
 typedef struct {
     Board board;
     int score_a;
@@ -35,8 +41,9 @@ int game_is_over(const Game *game);
 char game_winner(const Game *game);
 
 /*
- * Runs the full interactive game loop on stdin/stdout.
- * Returns 0 if the game finished normally, 1 if input closed early.
+ * Shows the mode menu, then runs the interactive game on stdin/stdout.
+ * In bot mode the human is A and the bot is B.
+ * Returns 0 on a finished game or EOF at the menu, 1 on EOF during play.
  */
 int game_run(void);
 

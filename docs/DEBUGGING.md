@@ -1,5 +1,25 @@
 # Debugging Strategy: GDB and Valgrind
 
+## Sprint 2 integrated bot mode
+
+The input fixtures include a menu choice: `1` for existing two-player
+fixtures and `2` for `bot_game.txt`. To inspect the real human-vs-bot loop:
+
+```sh
+make
+gdb --batch -ex "break bot_choose_move" \
+  -ex "run < tests/inputs/bot_game.txt > /dev/null" \
+  -ex "print bot_player" -ex "backtrace" ./dotsboxes
+valgrind --leak-check=full --track-origins=yes --error-exitcode=1 \
+  ./dotsboxes < tests/inputs/bot_game.txt > /dev/null
+```
+
+At this breakpoint `bot_player` should be `66 'B'`, called from `game_run`.
+The supplied bot-unit-test GDB screenshot uses A and is separate evidence;
+see [SPRINT2_REVIEW.md](SPRINT2_REVIEW.md) for the unchanged originals.
+The remaining examples below document the earlier Sprint 1 sessions, so
+source line numbers and addresses can differ after integration.
+
 The Makefile always compiles with `-g -O0`:
 
 - `-g` puts debug symbols (function names, line numbers, variable names) into

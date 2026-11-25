@@ -1,6 +1,6 @@
-# Dots and Boxes — CMPS 241 Course Project (Sprint 1)
+# Dots and Boxes — CMPS 241 Course Project (Sprints 1–2)
 
-A console-based, two-player Dots and Boxes game written in C, built to run on
+A console-based Dots and Boxes game written in C, with two-player and human-vs-bot modes, built to run on
 Alpine Linux inside a virtual machine and to start automatically at boot.
 
 ## Game rules (Sprint 1)
@@ -14,6 +14,11 @@ Alpine Linux inside a virtual machine and to start automatically at boot.
 - When all 20 boxes are claimed, the player with more boxes wins; 10–10 is a tie.
 
 ## How to enter a move
+
+Choose `1` at the start menu for two human players, or `2` to play against
+the bot. In bot mode you are Player A and the bot is Player B. Invalid menu
+choices are asked again. Ctrl+D at the menu exits successfully; Ctrl+D during
+an unfinished game exits with status 1.
 
 Type four numbers: `row1 col1 row2 col2`, then press Enter.
 
@@ -46,12 +51,15 @@ make            # builds ./dotsboxes
 ## Testing and debugging
 
 ```sh
-make test       # 49 unit tests + 9 scripted full-game checks
+make test       # 49 board/game checks + 20 bot checks + 9 scripted checks
 make test-game  # 107 end-to-end scenarios; requires python3 (apk add python3)
+python3 tests/test_modes.py  # 38 menu/bot scenarios, including 30 full games
 make valgrind   # full scripted game under Valgrind (exit code 1 on any error)
 ```
 
 See [docs/TESTING.md](docs/TESTING.md) and [docs/DEBUGGING.md](docs/DEBUGGING.md).
+The [Sprint 2 review](docs/SPRINT2_REVIEW.md) contains the work split and supplied
+Alpine screenshots; [bot strategy](docs/BOT_STRATEGY.md) describes Wissam's algorithm.
 
 ## Project structure
 
@@ -61,15 +69,20 @@ DotsAndBoxes/
 │   ├── board.h           board data model and game rules
 │   ├── display.h         all console output
 │   ├── input.h           reading and parsing a move
+│   ├── bot.h             bot move-selection interface
 │   └── game.h            turns, scores, game loop
 ├── src/                Implementation files
 │   ├── board.c
 │   ├── display.c
 │   ├── input.c
 │   ├── game.c
+│   ├── bot.c             capture, safety, sacrifice and chain-control strategy
 │   └── main.c            entry point
 ├── tests/
 │   ├── test_board.c      unit tests
+│   ├── test_bot.c        bot strategy tests
+│   ├── test_game.py      two-player reference-model checks
+│   ├── test_modes.py     menu and interactive human-vs-bot checks
 │   ├── run_tests.sh      scripted full-game tests
 │   └── inputs/           move files: tie, A wins, B wins, invalid input
 ├── scripts/
@@ -87,5 +100,7 @@ DotsAndBoxes/
 
 ## Auto-start on the Alpine VM
 
-The game starts on boot with no username or password prompt. The steps are
-in [docs/ALPINE_SETUP.md](docs/ALPINE_SETUP.md).
+The configured profile starts the installed game at boot. Follow
+[docs/ALPINE_SETUP.md](docs/ALPINE_SETUP.md), reinstall after pulling changes,
+and verify that tty1 shows the new mode menu. The supplied Sprint 2 bot
+screenshots do not establish that this updated menu boots automatically.
