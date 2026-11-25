@@ -6,6 +6,7 @@
  * as the strategy gets smarter in later steps.
  */
 #include <stdio.h>
+#include <time.h>
 #include "board.h"
 #include "bot.h"
 #include "game.h"
@@ -600,6 +601,285 @@ static void test_strength_vs_step2(void)
     CHECK(wins > losses, "the current bot beats the Step 2 bot more often than it loses");
 }
 
+/* Boxes the move would complete on board b. */
+static int boxes_after(const Board *b, Move m)
+{
+    Board probe = *b;
+    return board_apply_move(&probe, m, 'O');
+}
+
+/* ---------- Step 4: keeping control (double-dealing) ---------- */
+
+/* Draws every horizontal line: rows of boxes become 4 chains of 5. */
+static void four_chains_of_five(Board *b)
+{
+    int r;
+    int c;
+    board_init(b);
+    for (r = 0; r < DOT_ROWS; r++) {
+        for (c = 0; c < DOT_COLS - 1; c++) {
+            board_apply_move(b, (Move){r, c, r, c + 1}, 'A');
+        }
+    }
+}
+
+static void test_rule4_keeps_control(void)
+{
+    Board b;
+    Move m;
+    int c;
+
+    printf("rule 4: keep control with long chains left\n");
+    four_chains_of_five(&b);
+    /* A opened row 0 at its left end; B took 3 of its 5 boxes. */
+    board_apply_move(&b, (Move){0, 0, 1, 0}, 'A');
+    for (c = 1; c <= 3; c++) {
+        board_apply_move(&b, (Move){0, c, 1, c}, 'B');
+    }
+    /* Two boxes left in row 0, three untouched chains of 5 elsewhere. */
+    m = bot_choose_move(&b, 'B');
+    CHECK(m.r1 == 0 && m.c1 == 5 && m.r2 == 1 && m.c2 == 5,
+          "bot declines the last 2 boxes (draws the far end (0,5)-(1,5))");
+}
+
+static void test_rule4_takes_all_when_last_chain(void)
+{
+    Board b;
+    Move m;
+    int r;
+    int c;
+
+    printf("rule 4: take everything when it is the last chain\n");
+    four_chains_of_five(&b);
+    for (r = 1; r < BOX_ROWS; r++) {          /* close rows 1-3 completely */
+        for (c = 0; c < DOT_COLS; c++) {
+            board_apply_move(&b, (Move){r, c, r + 1, c}, 'A');
+        }
+    }
+    board_apply_move(&b, (Move){0, 0, 1, 0}, 'A');
+    for (c = 1; c <= 3; c++) {
+        board_apply_move(&b, (Move){0, c, 1, c}, 'B');
+    }
+    m = bot_choose_move(&b, 'B');
+    CHECK(m.r1 == 0 && m.c1 == 4 && m.r2 == 1 && m.c2 == 4,
+          "bot takes the last 2 boxes when nothing is left after them");
+}
+
+/* Independent check: is the player to move at a double-dealing point?
+ * (exactly one capturing line; after it exactly one more; then none) */
+static int capture_lines(const Board *b, Move *only)
+{
+    int lines = 0;
+    int r;
+    int c;
+    for (r = 0; r < DOT_ROWS; r++) {
+        for (c = 0; c < DOT_COLS; c++) {
+            Move candidates[2];
+            int k;
+            candidates[0] = (Move){r, c, r, c + 1};
+            candidates[1] = (Move){r, c, r + 1, c};
+            for (k = 0; k < 2; k++) {
+                if (board_validate_move(b, candidates[k]) == MOVE_OK) {
+                    Board probe = *b;
+                    if (board_apply_move(&probe, candidates[k], 'O') > 0) {
+                        lines++;
+                        *only = candidates[k];
+                    }
+                }
+            }
+        }
+    }
+    return lines;
+}
+
+static int opponent_can_double_deal(const Board *b)
+{
+    Move first;
+    Move second;
+    Move unused;
+    Board after = *b;
+    if (capture_lines(b, &first) != 1 || boxes_after(b, first) != 1) {
+        return 0;
+    }
+    board_apply_move(&after, first, 'O');
+    if (capture_lines(&after, &second) != 1 || boxes_after(&after, second) != 1) {
+        return 0;
+    }
+    board_apply_move(&after, second, 'O');
+    return capture_lines(&after, &unused) == 0;
+}
+
+static void test_rule3_tiebreak_denies_control(void)
+{
+    int trial;
+    int ok = 1;
+    int cases = 0;
+
+    printf("rule 3 tie-break on 300 endgame boards\n");
+    for (trial = 0; trial < 300; trial++) {
+        Board b;
+        Board after;
+        Move m;
+        int fewest = 99;
+        int deny_possible = 0;
+        int r;
+        int c;
+
+        random_endgame_board(&b);
+        if (best_capture_available(&b) > 0 || safe_move_exists(&b)) {
+            continue;
+        }
+        for (r = 0; r < DOT_ROWS; r++) {
+            for (c = 0; c < DOT_COLS; c++) {
+                Move candidates[2];
+                int k;
+                candidates[0] = (Move){r, c, r, c + 1};
+                candidates[1] = (Move){r, c, r + 1, c};
+                for (k = 0; k < 2; k++) {
+                    if (board_validate_move(&b, candidates[k]) == MOVE_OK) {
+                        int g = opponent_greedy_gain(&b, candidates[k]);
+                        if (g < fewest) {
+                            fewest = g;
+                            deny_possible = 0;
+                        }
+                        if (g == fewest) {
+                            Board probe = b;
+                            board_apply_move(&probe, candidates[k], 'X');
+                            if (!opponent_can_double_deal(&probe)) {
+                                deny_possible = 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (!deny_possible) {
+            continue;
+        }
+        cases++;
+        m = bot_choose_move(&b, 'B');
+        after = b;
+        board_apply_move(&after, m, 'B');
+        if (opponent_greedy_gain(&b, m) != fewest || opponent_can_double_deal(&after)) {
+            ok = 0;
+        }
+    }
+    printf("  (%d boards where denying control was possible)\n", cases);
+    CHECK(cases > 0, "the generator produced boards where the tie-break matters");
+    CHECK(ok, "the bot gives the fewest boxes AND denies the opponent a double-deal");
+}
+
+/* The Step 3 bot, as a reference opponent: Step 2 + smallest sacrifice
+ * (first line found on a tie, no look-ahead). */
+static Move step3_bot_move(const Board *b)
+{
+    Move m = step2_bot_move(b);
+    Board probe = *b;
+    int r;
+    int c;
+
+    if (board_apply_move(&probe, m, 'X') > 0 || !has_box_on_offer(&probe)) {
+        return m;   /* a capture or a safe move: same as Step 2 */
+    }
+    {
+        int fewest = 99;
+        Move best = m;
+        for (r = 0; r < DOT_ROWS; r++) {
+            for (c = 0; c < DOT_COLS; c++) {
+                Move candidates[2];
+                int k;
+                candidates[0] = (Move){r, c, r, c + 1};
+                candidates[1] = (Move){r, c, r + 1, c};
+                for (k = 0; k < 2; k++) {
+                    if (board_validate_move(b, candidates[k]) == MOVE_OK) {
+                        int g = opponent_greedy_gain(b, candidates[k]);
+                        if (g < fewest) {
+                            fewest = g;
+                            best = candidates[k];
+                        }
+                    }
+                }
+            }
+        }
+        return best;
+    }
+}
+
+static int play_current_vs_step3(char current_bot, int opening, double *slowest)
+{
+    Game g;
+    int moves = 0;
+
+    game_init(&g);
+    while (!game_is_over(&g)) {
+        Move m;
+        if (moves < opening && safe_move_exists(&g.board)
+                && best_capture_available(&g.board) == 0) {
+            do {
+                Board copy;
+                m.r1 = rng_next(DOT_ROWS);
+                m.c1 = rng_next(DOT_COLS);
+                if (rng_next(2) == 0) {
+                    m.r2 = m.r1;
+                    m.c2 = m.c1 + 1;
+                } else {
+                    m.r2 = m.r1 + 1;
+                    m.c2 = m.c1;
+                }
+                if (board_validate_move(&g.board, m) != MOVE_OK) {
+                    continue;
+                }
+                copy = g.board;
+                board_apply_move(&copy, m, 'X');
+                if (!has_box_on_offer(&copy)) {
+                    break;
+                }
+            } while (1);
+        } else if (g.current_player == current_bot) {
+            clock_t start = clock();
+            double seconds;
+            m = bot_choose_move(&g.board, current_bot);
+            seconds = (double)(clock() - start) / CLOCKS_PER_SEC;
+            if (seconds > *slowest) {
+                *slowest = seconds;
+            }
+        } else {
+            m = step3_bot_move(&g.board);
+        }
+        game_play_move(&g, m);
+        moves++;
+    }
+    return current_bot == PLAYER_A ? g.score_a - g.score_b
+                                   : g.score_b - g.score_a;
+}
+
+static void test_strength_vs_step3(void)
+{
+    int game;
+    int wins = 0;
+    int ties = 0;
+    int losses = 0;
+    double slowest = 0.0;
+
+    printf("strength: 400 games against the Step 3 bot\n");
+    for (game = 0; game < 400; game++) {
+        int opening = 8 + rng_next(15);
+        int diff = play_current_vs_step3(game % 2 == 0 ? PLAYER_A : PLAYER_B,
+                                         opening, &slowest);
+        if (diff > 0) {
+            wins++;
+        } else if (diff == 0) {
+            ties++;
+        } else {
+            losses++;
+        }
+    }
+    printf("  current bot won %d, tied %d, lost %d; slowest move %.3f s\n",
+           wins, ties, losses, slowest);
+    CHECK(wins > losses, "the current bot beats the Step 3 bot more often than it loses");
+    CHECK(slowest < 1.0, "every bot move takes less than 1 second");
+}
+
 int main(void)
 {
     test_bot_plays_whole_game_legally();
@@ -612,6 +892,10 @@ int main(void)
     test_strength_vs_random();
     test_rule3_smallest_sacrifice();
     test_strength_vs_step2();
+    test_rule4_keeps_control();
+    test_rule4_takes_all_when_last_chain();
+    test_rule3_tiebreak_denies_control();
+    test_strength_vs_step3();
 
     printf("\n%d bot tests run, %d failed\n", tests_run, tests_failed);
     return tests_failed == 0 ? 0 : 1;
