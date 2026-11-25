@@ -8,8 +8,10 @@
  *   Rule 2 - Safe move: otherwise draw a line that does not give the
  *            opponent a box, i.e. that does not leave any box with
  *            exactly three sides drawn.
- *   (fallback) If no rule applies, draw the first free line.
- *            Steps 3 and 4 will replace this fallback with smarter play.
+ *   Rule 3 - Smallest sacrifice: if every line gives something away,
+ *            draw the line that lets the opponent take the FEWEST boxes.
+ *            For each candidate line we simulate the opponent greedily
+ *            taking every box it can, and count them.
  *
  * The bot never changes the real board: it tries each move on a COPY
  * of the board (Board is a small struct, so copying it is cheap).
@@ -82,6 +84,33 @@ static int gives_away_box(const Board *board, Move move)
     return 0;
 }
 
+/*
+ * Simulates the opponent's reply after `move`: the opponent keeps
+ * drawing lines that complete boxes for as long as it can (each box
+ * gives it another turn). Returns how many boxes it would take.
+ */
+static int boxes_given_away(const Board *board, Move move)
+{
+    Board copy = *board;
+    Move moves[TOTAL_LINES];
+    int taken = 0;
+    int found;
+
+    board_apply_move(&copy, move, 'X');          /* the bot's sacrifice */
+    do {
+        int count = list_legal_moves(&copy, moves);
+        int i;
+        found = 0;
+        for (i = 0; i < count && !found; i++) {
+            if (boxes_completed_by(&copy, moves[i]) > 0) {
+                taken += board_apply_move(&copy, moves[i], 'O');
+                found = 1;                       /* it moves again */
+            }
+        }
+    } while (found);
+    return taken;
+}
+
 Move bot_choose_move(const Board *board, char bot_player)
 {
     Move moves[TOTAL_LINES];
@@ -116,6 +145,17 @@ Move bot_choose_move(const Board *board, char bot_player)
         }
     }
 
-    /* Fallback (replaced in Step 3): first free line. */
-    return moves[0];
+    /* Rule 3 - Smallest sacrifice. */
+    {
+        int best = 0;
+        int fewest = boxes_given_away(board, moves[0]);
+        for (i = 1; i < count; i++) {
+            int given = boxes_given_away(board, moves[i]);
+            if (given < fewest) {
+                fewest = given;
+                best = i;
+            }
+        }
+        return moves[best];
+    }
 }
