@@ -130,11 +130,253 @@ static void test_bot_last_free_line(void)
           "bot finds the only free line (3,5)-(4,5)");
 }
 
+/* ---------- helpers for the strategy tests (Steps 2+) ---------- */
+
+static int sides_of(const Board *b, int r, int c)
+{
+    return b->horizontal[r][c] + b->horizontal[r + 1][c]
+         + b->vertical[r][c] + b->vertical[r][c + 1];
+}
+
+/* 1 if some unclaimed box has exactly 3 sides (a box is "on offer"). */
+static int has_box_on_offer(const Board *b)
+{
+    int r;
+    int c;
+    for (r = 0; r < BOX_ROWS; r++) {
+        for (c = 0; c < BOX_COLS; c++) {
+            if (b->owner[r][c] == NO_OWNER && sides_of(b, r, c) == 3) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+/* Largest number of boxes any single legal move completes right now. */
+static int best_capture_available(const Board *b)
+{
+    int best = 0;
+    int r;
+    int c;
+
+    for (r = 0; r < DOT_ROWS; r++) {
+        for (c = 0; c < DOT_COLS; c++) {
+            Move candidates[2];
+            int k;
+            candidates[0] = (Move){r, c, r, c + 1};  /* horizontal */
+            candidates[1] = (Move){r, c, r + 1, c};  /* vertical   */
+            for (k = 0; k < 2; k++) {
+                if (board_validate_move(b, candidates[k]) == MOVE_OK) {
+                    Board copy = *b;
+                    int boxes = board_apply_move(&copy, candidates[k], 'X');
+                    if (boxes > best) {
+                        best = boxes;
+                    }
+                }
+            }
+        }
+    }
+    return best;
+}
+
+/* 1 if at least one legal move leaves no box on offer. */
+static int safe_move_exists(const Board *b)
+{
+    int r;
+    int c;
+
+    for (r = 0; r < DOT_ROWS; r++) {
+        for (c = 0; c < DOT_COLS; c++) {
+            Move candidates[2];
+            int k;
+            candidates[0] = (Move){r, c, r, c + 1};
+            candidates[1] = (Move){r, c, r + 1, c};
+            for (k = 0; k < 2; k++) {
+                if (board_validate_move(b, candidates[k]) == MOVE_OK) {
+                    Board copy = *b;
+                    board_apply_move(&copy, candidates[k], 'X');
+                    if (!has_box_on_offer(&copy)) {
+                        return 1;
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+/* Builds a random board with `lines` random lines already drawn. */
+static void random_board(Board *b, int lines)
+{
+    int i;
+    board_init(b);
+    for (i = 0; i < lines; i++) {
+        play_random_line(b, (i % 2 == 0) ? 'A' : 'B');
+    }
+}
+
+static void test_rule1_takes_a_free_box(void)
+{
+    Board b;
+    Board after;
+    Move m;
+
+    printf("rule 1: capture\n");
+    board_init(&b);
+    board_apply_move(&b, (Move){0, 0, 0, 1}, 'A');  /* top    of box (0,0) */
+    board_apply_move(&b, (Move){1, 0, 1, 1}, 'A');  /* bottom of box (0,0) */
+    board_apply_move(&b, (Move){0, 0, 1, 0}, 'A');  /* left   of box (0,0) */
+    m = bot_choose_move(&b, 'B');
+    after = b;
+    CHECK(board_apply_move(&after, m, 'B') == 1,
+          "bot draws the 4th side of a 3-sided box");
+}
+
+static void test_rule1_prefers_double_box(void)
+{
+    Board b;
+    Board after;
+    Move m;
+
+    printf("rule 1: double box preferred\n");
+    board_init(&b);
+    /* Box (0,0): 3 sides drawn -> a single capture is available. */
+    board_apply_move(&b, (Move){0, 0, 0, 1}, 'A');
+    board_apply_move(&b, (Move){1, 0, 1, 1}, 'A');
+    board_apply_move(&b, (Move){0, 1, 1, 1}, 'A');
+    /* Boxes (2,2) and (2,3): every side drawn except the shared line
+     * (2,3)-(3,3) -> drawing it completes both. */
+    board_apply_move(&b, (Move){2, 2, 2, 3}, 'A');
+    board_apply_move(&b, (Move){3, 2, 3, 3}, 'A');
+    board_apply_move(&b, (Move){2, 2, 3, 2}, 'A');
+    board_apply_move(&b, (Move){2, 3, 2, 4}, 'A');
+    board_apply_move(&b, (Move){3, 3, 3, 4}, 'A');
+    board_apply_move(&b, (Move){2, 4, 3, 4}, 'A');
+    m = bot_choose_move(&b, 'B');
+    after = b;
+    CHECK(board_apply_move(&after, m, 'B') == 2,
+          "bot takes two boxes with one line instead of one");
+}
+
+static void test_rule2_avoids_giving_boxes(void)
+{
+    Board b;
+    Board after;
+    Move m;
+
+    printf("rule 2: safe move\n");
+    board_init(&b);
+    /* Box (0,0) has 2 sides: drawing a 3rd side would offer it. */
+    board_apply_move(&b, (Move){0, 0, 0, 1}, 'A');
+    board_apply_move(&b, (Move){0, 0, 1, 0}, 'A');
+    m = bot_choose_move(&b, 'B');
+    after = b;
+    board_apply_move(&after, m, 'B');
+    CHECK(!has_box_on_offer(&after),
+          "bot does not draw a 3rd side when a safe line exists");
+}
+
+static void test_rules_on_random_boards(void)
+{
+    int trial;
+    int captures_ok = 1;
+    int safe_ok = 1;
+    int capture_cases = 0;
+    int safe_cases = 0;
+
+    printf("rules 1-2 on 3000 random boards\n");
+    for (trial = 0; trial < 3000; trial++) {
+        Board b;
+        Board after;
+        Move m;
+        int best;
+
+        random_board(&b, rng_next(49));
+        best = best_capture_available(&b);
+        m = bot_choose_move(&b, 'B');
+        after = b;
+        if (best > 0) {
+            capture_cases++;
+            if (board_apply_move(&after, m, 'B') != best) {
+                captures_ok = 0;
+            }
+        } else if (safe_move_exists(&b)) {
+            safe_cases++;
+            board_apply_move(&after, m, 'B');
+            if (has_box_on_offer(&after)) {
+                safe_ok = 0;
+            }
+        }
+    }
+    printf("  (%d boards with a capture, %d with only safe moves)\n",
+           capture_cases, safe_cases);
+    CHECK(captures_ok, "whenever a capture exists, the bot takes the biggest one");
+    CHECK(safe_ok, "whenever a safe move exists (and no capture), the bot plays safe");
+}
+
+/* Plays a full game: the bot is `bot_player`, the other side plays
+ * random legal lines. Returns the bot's score minus the opponent's. */
+static int play_bot_vs_random(char bot_player)
+{
+    Game g;
+
+    game_init(&g);
+    while (!game_is_over(&g)) {
+        Move m;
+        if (g.current_player == bot_player) {
+            m = bot_choose_move(&g.board, bot_player);
+        } else {
+            do {
+                m.r1 = rng_next(DOT_ROWS);
+                m.c1 = rng_next(DOT_COLS);
+                if (rng_next(2) == 0) {
+                    m.r2 = m.r1;
+                    m.c2 = m.c1 + 1;
+                } else {
+                    m.r2 = m.r1 + 1;
+                    m.c2 = m.c1;
+                }
+            } while (board_validate_move(&g.board, m) != MOVE_OK);
+        }
+        game_play_move(&g, m);
+    }
+    return bot_player == PLAYER_A ? g.score_a - g.score_b
+                                  : g.score_b - g.score_a;
+}
+
+static void test_strength_vs_random(void)
+{
+    int game;
+    int wins = 0;
+    int ties = 0;
+    int losses = 0;
+
+    printf("strength: 200 games against a random player\n");
+    for (game = 0; game < 200; game++) {
+        int diff = play_bot_vs_random(game % 2 == 0 ? PLAYER_B : PLAYER_A);
+        if (diff > 0) {
+            wins++;
+        } else if (diff == 0) {
+            ties++;
+        } else {
+            losses++;
+        }
+    }
+    printf("  bot won %d, tied %d, lost %d\n", wins, ties, losses);
+    CHECK(wins >= 190, "bot wins at least 95% of games against a random player");
+}
+
 int main(void)
 {
     test_bot_plays_whole_game_legally();
     test_bot_legal_on_random_boards();
     test_bot_last_free_line();
+    test_rule1_takes_a_free_box();
+    test_rule1_prefers_double_box();
+    test_rule2_avoids_giving_boxes();
+    test_rules_on_random_boards();
+    test_strength_vs_random();
 
     printf("\n%d bot tests run, %d failed\n", tests_run, tests_failed);
     return tests_failed == 0 ? 0 : 1;
