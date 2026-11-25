@@ -1,5 +1,5 @@
 /*
- * main.c - Entry point for the Dots and Boxes game (Sprint 1).
+ * main.c - Entry point for the two-player / human-versus-bot menu.
  */
 #include "game.h"
 

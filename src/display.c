@@ -13,6 +13,33 @@
 
 #define SEPARATOR_LENGTH 80
 
+void display_menu(void)
+{
+    printf("Dots and Boxes\n"
+           "1) Two players\n"
+           "2) Play against the bot\n"
+           "Choose 1 or 2:\n");
+    fflush(stdout);
+}
+
+void display_invalid_choice(void)
+{
+    printf("Invalid choice. Enter 1 or 2.\n");
+}
+
+void display_menu_closed(void)
+{
+    printf("\nInput closed at the menu. Exiting.\n");
+    fflush(stdout);
+}
+
+void display_bot_move(Move move)
+{
+    printf("Bot (Player B) plays: %d %d %d %d\n",
+           move.r1, move.c1, move.r2, move.c2);
+    fflush(stdout);
+}
+
 static void print_separator(void)
 {
     int i;
