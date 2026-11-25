@@ -9,6 +9,14 @@
 
 #include "board.h"
 
+/* Mode selection and a clean exit before a game has started. */
+void display_menu(void);
+void display_invalid_choice(void);
+void display_menu_closed(void);
+
+/* Announces the bot's move before the usual score and board update. */
+void display_bot_move(Move move);
+
 /* Prints the board in the format shown in the project sample run. */
 void display_board(const Board *board);
 
