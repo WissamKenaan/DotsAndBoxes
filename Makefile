@@ -1,8 +1,8 @@
-# Makefile - Dots and Boxes (CMPS 241, Sprint 1)
+# Makefile - Dots and Boxes (CMPS 241, Sprints 1-2)
 #
 #   make            build the game  -> ./dotsboxes
 #   make run        build and start the game
-#   make test       build and run unit tests + scripted full-game tests
+#   make test       build and run unit tests (board + bot) + scripted full-game tests
 #   make test-game  check 107 end-to-end game scenarios (requires Python 3)
 #   make valgrind   run a full scripted game under Valgrind
 #   make install    copy the game to /usr/local/bin (run as root)
@@ -18,15 +18,17 @@ LDFLAGS =
 
 TARGET    = dotsboxes
 TEST_BIN  = test_board
+BOT_TEST_BIN = test_bot
 BUILD_DIR = build
 PREFIX    = /usr/local
 
 # Every .c file in src/ except main.c is shared by the game and the tests.
-LIB_SRCS  = src/board.c src/display.c src/input.c src/game.c
+LIB_SRCS  = src/board.c src/display.c src/input.c src/game.c src/bot.c
 LIB_OBJS  = $(LIB_SRCS:src/%.c=$(BUILD_DIR)/%.o)
 MAIN_OBJ  = $(BUILD_DIR)/main.o
 TEST_OBJ  = $(BUILD_DIR)/test_board.o
-DEPS      = $(LIB_OBJS:.o=.d) $(MAIN_OBJ:.o=.d) $(TEST_OBJ:.o=.d)
+BOT_TEST_OBJ = $(BUILD_DIR)/test_bot.o
+DEPS      = $(LIB_OBJS:.o=.d) $(MAIN_OBJ:.o=.d) $(TEST_OBJ:.o=.d) $(BOT_TEST_OBJ:.o=.d)
 
 VALGRIND_FLAGS = --leak-check=full --show-leak-kinds=all \
                  --track-origins=yes --error-exitcode=1
@@ -41,10 +43,16 @@ $(TARGET): $(LIB_OBJS) $(MAIN_OBJ)
 $(TEST_BIN): $(LIB_OBJS) $(TEST_OBJ)
 	$(CC) $(LDFLAGS) -o $@ $^
 
+$(BOT_TEST_BIN): $(LIB_OBJS) $(BOT_TEST_OBJ)
+	$(CC) $(LDFLAGS) -o $@ $^
+
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/test_board.o: tests/test_board.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/test_bot.o: tests/test_bot.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR):
@@ -53,8 +61,9 @@ $(BUILD_DIR):
 run: $(TARGET)
 	./$(TARGET)
 
-test: $(TARGET) $(TEST_BIN)
+test: $(TARGET) $(TEST_BIN) $(BOT_TEST_BIN)
 	./$(TEST_BIN)
+	./$(BOT_TEST_BIN)
 	sh tests/run_tests.sh
 
 test-game: $(TARGET)
@@ -67,6 +76,6 @@ install: $(TARGET)
 	install -m 755 $(TARGET) $(PREFIX)/bin/$(TARGET)
 
 clean:
-	rm -rf $(BUILD_DIR) $(TARGET) $(TEST_BIN)
+	rm -rf $(BUILD_DIR) $(TARGET) $(TEST_BIN) $(BOT_TEST_BIN)
 
 -include $(DEPS)

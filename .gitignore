@@ -4,6 +4,7 @@ build/
 *.d
 dotsboxes
 test_board
+test_bot
 
 # Debugger / profiler output
 core
