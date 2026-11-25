@@ -1,4 +1,4 @@
-name: Sprint 1 Alpine checks
+name: Sprint 1 and 2 Alpine checks
 
 on:
   push:
@@ -20,12 +20,17 @@ jobs:
             make clean
             make test
             make test-game
+            python3 tests/test_modes.py
             make valgrind
-            for input in tests/inputs/a_wins_game.txt tests/inputs/b_wins_game.txt; do
+            for input in tests/inputs/a_wins_game.txt tests/inputs/b_wins_game.txt tests/inputs/bot_game.txt; do
               valgrind --leak-check=full --track-origins=yes --error-exitcode=99 ./dotsboxes < "$input" > /dev/null
             done
             valgrind --leak-check=full --track-origins=yes --error-exitcode=99 ./test_board > /dev/null
+            valgrind --leak-check=full --track-origins=yes --error-exitcode=99 ./test_bot > /dev/null
             gdb --batch -ex "break board_apply_move" \
               -ex "run < tests/inputs/tie_game.txt > /dev/null" \
               -ex "print move" -ex "backtrace" ./dotsboxes
+            gdb --batch -ex "break bot_choose_move" \
+              -ex "run < tests/inputs/bot_game.txt > /dev/null" \
+              -ex "print bot_player" -ex "backtrace" ./dotsboxes
           '
