@@ -101,7 +101,7 @@ def check_game(label, moves, invalid_inputs=(), trailing_newline=True):
     finished = len(owners) == 20
     if not finished:
         expected_prompts.append(player)
-    payload = "\n".join(input_lines)
+    payload = "1\n" + "\n".join(input_lines)
     if trailing_newline and input_lines:
         payload += "\n"
     result = subprocess.run(
@@ -140,6 +140,7 @@ def main():
     fixtures = ["a_wins_game.txt", "b_wins_game.txt", "tie_game.txt"]
     for filename in fixtures:
         moves = (ROOT / "tests" / "inputs" / filename).read_text().splitlines()
+        assert moves.pop(0) == "1", f"{filename}: missing two-player menu choice"
         check_game(filename, moves, invalid, trailing_newline=False)
         print(f"PASS {filename}: every board, score, turn, and result")
 
