@@ -115,8 +115,8 @@ reboot
 Expected for Sprint 2: the VM boots straight into the menu (`1) Two players`,
 `2) Play against the bot`) on tty1, with no login prompt. Select either mode
 to see the empty board. After a completed game, press Enter through the
-profile and verify the next session shows the menu again. Save fresh VM
-screenshots; earlier bot-test screenshots do not verify the menu at boot.
+profile and verify the next session shows the menu again. Screenshots of
+these checks are in `docs/screenshots/sprint2/` (05 to 07).
 
 ## Getting a root shell after this change
 

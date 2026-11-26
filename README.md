@@ -58,8 +58,8 @@ make valgrind   # full scripted game under Valgrind (exit code 1 on any error)
 ```
 
 See [docs/TESTING.md](docs/TESTING.md) and [docs/DEBUGGING.md](docs/DEBUGGING.md).
-The [Sprint 2 review](docs/SPRINT2_REVIEW.md) contains the work split and supplied
-Alpine screenshots; [bot strategy](docs/BOT_STRATEGY.md) describes Wissam's algorithm.
+The [Sprint 2 review](docs/SPRINT2_REVIEW.md) contains the work split and the
+Alpine VM screenshots; [bot strategy](docs/BOT_STRATEGY.md) describes Wissam's algorithm.
 
 ## Project structure
 
@@ -102,5 +102,5 @@ DotsAndBoxes/
 
 The configured profile starts the installed game at boot. Follow
 [docs/ALPINE_SETUP.md](docs/ALPINE_SETUP.md), reinstall after pulling changes,
-and verify that tty1 shows the new mode menu. The supplied Sprint 2 bot
-screenshots do not establish that this updated menu boots automatically.
+and verify that tty1 shows the new mode menu. This was verified on our Alpine
+VM with the final build (see [docs/SPRINT2_REVIEW.md](docs/SPRINT2_REVIEW.md)).

@@ -15,8 +15,8 @@ valgrind --leak-check=full --track-origins=yes --error-exitcode=1 \
 ```
 
 At this breakpoint `bot_player` should be `66 'B'`, called from `game_run`.
-The supplied bot-unit-test GDB screenshot uses A and is separate evidence;
-see [SPRINT2_REVIEW.md](SPRINT2_REVIEW.md) for the unchanged originals.
+The bot unit-test GDB session on the VM uses A (the bot plays both sides in
+that test); see [SPRINT2_REVIEW.md](SPRINT2_REVIEW.md) for its screenshot.
 The remaining examples below document the earlier Sprint 1 sessions, so
 source line numbers and addresses can differ after integration.
 

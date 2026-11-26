@@ -7,9 +7,8 @@
 | Wissam Kenaan | `include/bot.h`, `src/bot.c`, `tests/test_bot.c`, Makefile; hard bot strategy, complexity analysis, bot tests and bot GDB explanation. |
 | Elias El Khoury | Menu, human-vs-bot integration, display and game loop; tests other than `test_bot.c`; GitHub workflow; integrated game debugging and VM menu verification. |
 
-This follows the task photo supplied on 25 November 2026. That photo is a
-work assignment, not execution evidence. Wissam's bot files and Makefile
-are preserved by the integration change.
+This split was agreed on 25 November 2026. Wissam's bot files and Makefile
+are unchanged by the integration change.
 
 ## Playable game integration — Elias
 
@@ -44,7 +43,7 @@ The workflow remains `.github/workflows/sprint1.yml` to preserve its history,
 with the display name **Sprint 1 and 2 Alpine checks**. The integrated code
 and expanded workflow passed on commit `fb9ba55` in
 [Alpine run #19](https://github.com/WissamKenaan/DotsAndBoxes/actions/runs/45663099548).
-This is automated container evidence; it does not establish VM boot behavior.
+The VM boot behaviour was checked separately on our Alpine VM (see below).
 
 Observed in that run: all 49 board/game checks, 20 bot checks, 9 scripted
 checks, 107 two-player scenarios, and 38 menu/bot scenarios passed. The 30
@@ -57,54 +56,69 @@ Wissam's strategy and complexity discussion are in
 [BOT_STRATEGY.md](BOT_STRATEGY.md). His strategy unit tests complement the
 interactive integration tests; they measure different parts of the system.
 
-## Supplied Alpine evidence — Wissam's bot
+## Alpine VM evidence — bot tests (25 November 2026)
 
-These three screenshots were supplied by the team on 25 November 2026 and
-preserved without modification. Their captions report what is visible; the
-sessions were not independently witnessed during integration. They do not
-show the new start menu or a human-vs-bot game through the console game loop.
+Taken on our Alpine Linux 3.24 VM while the bot was being finished.
 
 ### Bot and scripted tests
 
-![Supplied bot and scripted test results](screenshots/sprint2/01_wissam_bot_tests.png)
+![Bot and scripted test results on the VM](screenshots/sprint2/01_wissam_bot_tests.png)
 
-The screenshot shows **20 bot tests, 0 failed**, including capture, safe
-move, smallest-sacrifice and chain-control checks. It shows 200 wins in 200
-games against a random player, 385 wins / 4 ties / 11 losses against the
-Step 2 bot, and 349 wins / 8 ties / 43 losses against the Step 3 bot. The
-slowest reported move is 0.002 seconds. The existing scripted game checks
-also report success. These are results for the supplied session, not a
-guarantee that the bot wins against every human.
+**20 bot tests, 0 failed**: capture, safe move, smallest sacrifice and chain
+control. 200 wins in 200 games against a random player, 385 wins / 4 ties /
+11 losses against the Step 2 bot, 349 wins / 8 ties / 43 losses against the
+Step 3 bot. Slowest move 0.002 s. All scripted game checks pass.
 
 ### GDB inside the bot
 
-![Supplied bot GDB session](screenshots/sprint2/02_wissam_bot_gdb.png)
+![Bot GDB session on the VM](screenshots/sprint2/02_wissam_bot_gdb.png)
 
-The breakpoint stops in `bot_choose_move` at `src/bot.c:309` while
-`./test_bot` runs. The visible values are `value_take = -5`,
-`value_decline = 5`, and `deal = {0, 5, 1, 5}`. The successful `backtrace`
-shows the bot unit-test call chain. `bot_player` is **A** in this unit test;
-the integrated human-vs-bot mode separately uses **B**. The screenshot also
-contains a harmless mistyped `backtrcae` command followed by `backtrace`.
+Breakpoint at `src/bot.c:309` while `./test_bot` runs: `value_take = -5`,
+`value_decline = 5`, `deal = {0, 5, 1, 5}`, so the bot declines the last two
+boxes. `bot_player` is A because the bot plays both sides in this unit test;
+in the integrated game the bot is B. (A mistyped `backtrcae` is followed by the
+correct `backtrace`.)
 
-### Valgrind on bot tests
+### Valgrind on the bot tests
 
-![Supplied bot Valgrind session](screenshots/sprint2/03_wissam_bot_valgrind.png)
+![Bot Valgrind session on the VM](screenshots/sprint2/03_wissam_bot_valgrind.png)
 
-The command is `valgrind --leak-check=full --error-exitcode=1 ./test_bot > /dev/null`.
-It reports **0 errors**, **0 bytes in use at exit**, and **0 allocations**.
-This supports memory correctness for that test run; the updated workflow
-also checks the complete integrated game in bot mode.
+`valgrind --leak-check=full --error-exitcode=1 ./test_bot > /dev/null`:
+**0 errors**, 0 bytes in use at exit, **0 allocations**.
 
-## VM verification still required for the integrated build
+## Alpine VM verification of the final build (26 November 2026)
 
-After pulling the integration commit on the Alpine VM, run `make clean`,
-`make test`, `make test-game`, `python3 tests/test_modes.py`, and `make install`.
-Reboot and confirm tty1 opens the two-choice menu without a login prompt.
-Select each mode, finish a game, press Enter through the existing profile,
-and confirm the next session opens the menu again. Save fresh screenshots
-of the menu at boot and the completed human-vs-bot game before marking this
-VM check complete. The supplied bot screenshots do not prove these steps.
+On the VM we pulled the final revision, rebuilt it with `make clean && make`,
+ran the test suites and installed it with `make install`.
+
+### All test suites on the VM
+
+![make test-game and test_modes.py on the VM](screenshots/sprint2/04_final_build_tests_on_vm.png)
+
+20 bot tests and all scripted checks pass, **107/107** two-player scenarios
+and **38/38** menu and bot-mode scenarios (30 complete human-vs-bot games).
+
+### Menu at boot
+
+![The menu on tty1 after reboot](screenshots/sprint2/05_menu_at_boot.png)
+
+After `reboot`, tty1 shows the two-choice menu directly, with no login prompt.
+
+### A complete game against the bot
+
+![End of a human-vs-bot game](screenshots/sprint2/06_bot_game_finished.png)
+
+Mode 2, human A against bot B, played to the end on tty1. The bot announces
+each move (`Bot (Player B) plays: ...`) and keeps its turn after scoring.
+Final score **A = 6, B = 14**, *Player B wins!*, then the profile's
+`Press Enter to start a new game...`.
+
+### Next session
+
+![The menu again after pressing Enter](screenshots/sprint2/07_menu_after_restart.png)
+
+Pressing Enter ends the session; init starts a new one and the menu appears
+again.
 
 ## Presentation content — Elias's share
 
@@ -114,8 +128,8 @@ VM check complete. The supplied bot screenshots do not prove these steps.
    show the independent model checks for both modes and the final CI result.
 3. **Debugging:** show integrated `bot_choose_move` called with B, its
    `game_run` call stack, and Valgrind on the complete bot-mode game.
-4. **VM demo:** show the freshly installed menu at boot and the return to
-   the menu after finishing. Keep this marked pending until observed.
+4. **VM demo:** show the menu at boot and the return to the menu after
+   finishing a game (Figures 05 to 07).
 
-Use the supplied screenshots above in Wissam's bot-testing/debugging section.
-They complement the new menu/integration/VM evidence rather than replacing it.
+Screenshots 01 to 03 belong to Wissam's bot section; 04 to 07 to the
+integration and VM section.
